@@ -575,8 +575,7 @@ EOF
   echo
   echo -e "\t--> Check whether Prometheus is able to scrape exporters and other components"
   prom_ip=$(kubectl get pods -n collectors -o wide | grep prometheus | awk '{print $6}')
-  prom_tgt=$(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- /bin/sh -c "curl -s http://${prom_ip}:9090/api/v1/targets?state=active | jq --raw-output '.data.activeTargets[] | "Service: \(.discoveredLabels.__meta_kubernetes_service_name // .discoveredLabels.__meta_kuber
-netes_pod_label_opscruiseProduct), Instance: \(.labels.instance), Health: \(.health)"'")
+  prom_tgt=$(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- /bin/sh -c "curl -s http://${prom_ip}:9090/api/v1/targets?state=active | jq --raw-output '.data.activeTargets[] | "Service: \(.discoveredLabels.__meta_kubernetes_service_name // .discoveredLabels.__meta_kubernetes_pod_label_opscruiseProduct), Instance: \(.labels.instance), Health: \(.health)"'")
   echo "$prom_tgt"
   echo
   if [ "$err_count" -gt 0 ]; then
