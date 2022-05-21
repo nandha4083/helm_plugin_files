@@ -577,7 +577,7 @@ EOF
   prom_ip=$(kubectl get pods -n collectors -o wide | grep prometheus | awk '{print $6}')
   prom_tgt=$(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- /bin/sh -c "curl -s http://${prom_ip}:9090/api/v1/targets?state=active")
   jq_parsed=$(echo "$prom_tgt" | jq --raw-output '.data.activeTargets[] | "\(.discoveredLabels.__meta_kubernetes_service_name // .discoveredLabels.__meta_kubernetes_pod_label_opscruiseProduct),\(.labels.instance),\(.discoveredLabels.__metrics_path__),\(.health)"' | sort)
-  printf "%0.s-" {1..86};echo
+  printf "%0.s-" {1..87};echo
   printf "|%-20s|%-40s|%-12s|%-10s|\n" "SERVICE" "PROMETHEUS_TARGET" "METRICS_PATH" "HEALTH"
   echo "|--------------------|----------------------------------------|------------|----------|"
   for jqp in $jq_parsed
@@ -588,7 +588,7 @@ EOF
     health=$(echo ${jqp} | awk -F',' '{print $4}')
     printf "|%-20s|%-40s|%-12s|%-10s|\n" $svc_name $prome_tgt $mpath $health
   done
-  printf "%0.s-" {1..86};echo
+  printf "%0.s-" {1..87};echo
   echo
   if [ "$err_count" -gt 0 ]; then
     echo "Status: \"$err_count\" error(s) found in Post-check."
