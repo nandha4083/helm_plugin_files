@@ -29,16 +29,16 @@ declare -a lnx_distro=("ubuntu" "amzn" "centos")
 declare -a ubuntu_kernel_loc=("security.ubuntu.com:80")
 declare -a centos_kernel_loc=("download.cf.centos.org:443" "mirror.centos.org:80")
 if [ -f 'opscruise-values.yaml' ]; then
-  aws_region=$(cat opscruise-values.yaml | grep region | head -1 | awk -F': ' '{print $2}' | sed s/[\"]//g)
+  aws_region=$(grep region opscruise-values.yaml | head -1 | awk -F': ' '{print $2}' | sed s/[\"]//g)
 else
   aws_region="us-east-1"
 fi
 declare -a amzn_kernel_loc=("amazonlinux-2-repos-${aws_region}.s3.dualstack.${aws_region}.amazonaws.com:443:80" "amazonlinux-2-repos-${aws_region}.s3.${aws_region}.amazonaws.com:443")
 OC_DOCKER_SECRET_NAME="oc-docker-netutils"
 if [ -f 'opscruise-values.yaml' ]; then
-  OC_DOCKER_SECRET_USERNAME=$(cat opscruise-values.yaml | grep DOCKER_USERNAME | awk -F': ' '{print $2}' | sed s/[\"]//g)
-  OC_DOCKER_SECRET_PASSWORD=$(cat opscruise-values.yaml | grep DOCKER_PASSWORD | awk -F': ' '{print $2}' | sed s/[\"]//g)
-  OC_DOCKER_SECRET_EMAIL=$(cat opscruise-values.yaml | grep DOCKER_EMAIL | awk -F': ' '{print $2}' | sed s/[\"]//g)
+  OC_DOCKER_SECRET_USERNAME=$(grep DOCKER_USERNAME opscruise-values.yaml | awk -F': ' '{print $2}' | sed s/[\"]//g)
+  OC_DOCKER_SECRET_PASSWORD=$(grep DOCKER_PASSWORD opscruise-values.yaml | awk -F': ' '{print $2}' | sed s/[\"]//g)
+  OC_DOCKER_SECRET_EMAIL=$(grep DOCKER_EMAIL opscruise-values.yaml | awk -F': ' '{print $2}' | sed s/[\"]//g)
 else
   echo "File \"opscruise-values.yaml\" does not exist under the path \"$(pwd)\". Aborting execution..."
   exit 1
@@ -51,11 +51,11 @@ cleanup() {
       echo "Cleanup is disabled..."
     else
       echo "Cleaning up..."
-      if $(kubectl get pod ${oc_pod_name} -n ${OC_NAMESPACE} &> /dev/null); then
-        kubectl delete pod ${oc_pod_name} -n ${OC_NAMESPACE}
+      if kubectl get pod "${oc_pod_name}" -n "${OC_NAMESPACE}" &> /dev/null; then
+        kubectl delete pod "${oc_pod_name}" -n "${OC_NAMESPACE}"
       fi
-      if $(kubectl get secret ${OC_DOCKER_SECRET_NAME} -n ${OC_NAMESPACE} &> /dev/null); then
-        kubectl delete secret ${OC_DOCKER_SECRET_NAME} -n ${OC_NAMESPACE}
+      if kubectl get secret "${OC_DOCKER_SECRET_NAME}" -n "${OC_NAMESPACE}" &> /dev/null; then
+        kubectl delete secret "${OC_DOCKER_SECRET_NAME}" -n "${OC_NAMESPACE}"
       fi
       if [ -f ./oc-net.yaml ]; then
         rm -v oc-net.yaml
@@ -63,7 +63,6 @@ cleanup() {
       if [ -f ./kernel_check.sh ]; then
         rm -v kernel_check.sh
       fi
-      ns_op=$(kubectl get all -n ${OC_NAMESPACE} 2>&1)
       kubectl delete ns ${OC_NAMESPACE} 2> /dev/null
     fi
   fi
@@ -117,13 +116,13 @@ EOF
   if op=$(kubectl apply -f ./oc-net.yaml); then
     echo -e "[ ${BGREEN}OK${NC} ] ... $op"
     while [ "$count" -lt "$pod_retry_count" ]; do
-      pod_status=$(kubectl get pod ${oc_pod_name} -n ${OC_NAMESPACE} -o jsonpath='{.status.containerStatuses[*].started}')
+      pod_status=$(kubectl get pod "${oc_pod_name}" -n "${OC_NAMESPACE}" -o jsonpath='{.status.containerStatuses[*].started}')
       if [ "$pod_status" == "true" ]; then
         echo "Pod started"
         sleep $sleep_sec
         break
       else
-        echo "waiting for the pod to start... Sleep "$sleep_sec"s"
+        echo "waiting for the pod to start... Sleep $sleep_sec seconds"
         count=$(( count + 1 ))
         sleep $sleep_sec
       fi
@@ -151,30 +150,26 @@ EOF
 
 pre-requisite() {
   err_count=0
-  doc_chk=0
   echo "--------------------------------------------------------"
   echo "-------------- Checking Pre-requisites -----------------"
   echo "--------------------------------------------------------"
-  kubectl version --client=true --short=true &> /dev/null
-  if [ $? -gt 0 ]; then
+  if kubectl version --client=true --short=true &> /dev/null; then
+    echo -e "[ ${BGREEN}OK${NC} ] ... Kubectl package is present"
+  else
     echo -e "[ ${BRED}FAILED${NC} ] ... Kubectl package is not present"
     err_count=$(( err_count + 1 ))
-  else
-    echo -e "[ ${BGREEN}OK${NC} ] ... Kubectl package is present"
   fi
-  kubectl get nodes &> /dev/null
-  if [ $? -gt 0 ]; then
+  if kubectl get nodes &> /dev/null; then
+    echo -e "[ ${BGREEN}OK${NC} ] ... K8s cluster is accessible"
+  else
     echo -e "[ ${BRED}FAILED${NC} ] ... K8s cluster is not accessible"
     err_count=$(( err_count + 1 ))
-  else
-    echo -e "[ ${BGREEN}OK${NC} ] ... K8s cluster is accessible"
   fi
-  helm version --short &> /dev/null
-  if [ $? -gt 0 ]; then
+  if helm version --short &> /dev/null; then
+    echo -e "[ ${BGREEN}OK${NC} ] ... HELM package is present"
+  else
     echo -e "[ ${BRED}FAILED${NC} ] ... HELM package is not present"
     err_count=$(( err_count + 1 ))
-  else
-    echo -e "[ ${BGREEN}OK${NC} ] ... HELM package is present"
   fi
   echo
   if [ "$err_count" -gt 0 ]; then
@@ -196,8 +191,7 @@ pre-check() {
   echo "--------------------------------------------------------"
   echo
   echo -e "\t--> OS and Kernel Version of Nodes in the Cluster"
-  op=$(kubectl get nodes -o custom-columns=Node_Name:.metadata.name,OS_Name:.status.nodeInfo.osImage,Kernel_version:.status.nodeInfo.kernelVersion)
-  if [ $? -eq 0 ]; then
+  if op=$(kubectl get nodes -o custom-columns=Node_Name:.metadata.name,OS_Name:.status.nodeInfo.osImage,Kernel_version:.status.nodeInfo.kernelVersion); then
     echo "$op"
     os_chk=$(kubectl get nodes -o custom-columns=OS_Name:.status.nodeInfo.osImage | awk 'NR==2')
     if [[ "$os_chk" == *"Red Hat"* ]]; then
@@ -209,9 +203,8 @@ pre-check() {
   fi
   echo
   echo -e "\t--> Kubernetes Cluster Version"
-  op=$(kubectl version --short=true | grep Server)
-  if [ $? -eq 0 ]; then
-    echo "$op" | sed s/Server/Kubernetes/g
+  if op=$(kubectl version --short=true | grep Server); then
+    echo "${op//Server/Kubernetes}"
   else
     echo -e "[ ${BRED}FAILED${NC} ] ... Unable to get cluster version"
     err_count=$(( err_count + 1 ))
@@ -243,7 +236,7 @@ pre-check() {
   echo
   sanity_check_pod
   echo -e "\t--> Checking connectivity to Opscruise Helm repo"
-  http_code=$(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- curl -n -s -o /dev/null -w "%{http_code}" --max-time 15 https://opscruise-helm.bitbucket.io)
+  http_code=$(kubectl exec -it "${oc_pod_name}" -n "${OC_NAMESPACE}" -- curl -n -s -o /dev/null -w "%{http_code}" --max-time 15 https://opscruise-helm.bitbucket.io)
   if [[ "$http_code" -ge 200 && "$http_code" -lt 400 ]]; then
     echo -e "[ ${BGREEN}OK${NC} ] ... Opscruise Helm repo \"https://opscruise-helm.bitbucket.io\" is reachable. HTTP Status Code:\"${http_code}\""
   else
@@ -252,8 +245,8 @@ pre-check() {
   fi
   echo
   echo -e "\t--> Checking connectivity to Open Source repositories"
-  for repo in ${repos[@]}; do
-    http_code=$(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- curl -n -s -o /dev/null -w "%{http_code}" --max-time 10 ${repo})
+  for repo in "${repos[@]}"; do
+    http_code=$(kubectl exec -it "${oc_pod_name}" -n "${OC_NAMESPACE}" -- curl -n -s -o /dev/null -w "%{http_code}" --max-time 10 "${repo}")
     if [[ "$http_code" -ge 200 && "$http_code" -lt 400 ]]; then
       echo -e "[ ${BGREEN}OK${NC} ] ... Opensource repo \"${repo}\" is reachable. HTTP Status Code:\"${http_code}\""
     else
@@ -263,15 +256,15 @@ pre-check() {
   done
   echo
   nc_call() {
-    if $(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- which nc &> /dev/null); then
-      if $(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- nc -zw10 ${ep_name} ${ep_port}); then
+    if kubectl exec -it "${oc_pod_name}" -n "${OC_NAMESPACE}" -- which nc &> /dev/null; then
+      if kubectl exec -it "${oc_pod_name}" -n "${OC_NAMESPACE}" -- nc -zw10 "${ep_name}" "${ep_port}"; then
         echo -e "[ ${BGREEN}OK${NC} ] ... Target \"${ep_name}\" is reachable on port \"${ep_port}\""
       else
         echo -e "[ ${BRED}FAILED${NC} ] ... Unable to connect \"${ep_name}\" on port \"${ep_port}\""
         err_count=$(( err_count + 1 ))
       fi
     else
-      if $(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- /bin/bash -c "echo >/dev/tcp/${ep_name}/${ep_port} &>/dev/null"); then
+      if kubectl exec -it "${oc_pod_name}" -n "${OC_NAMESPACE}" -- /bin/bash -c "echo >/dev/tcp/${ep_name}/${ep_port} &>/dev/null"; then
         echo -e "[ ${BGREEN}OK${NC} ] ... Target \"${ep_name}\" is reachable on port \"${ep_port}\""
       else
         echo -e "[ ${BRED}FAILED${NC} ] ... Unable to connect \"${ep_name}\" on port \"${ep_port}\""
@@ -281,47 +274,35 @@ pre-check() {
   }
   echo -e "\t--> Checking connectivity to Opscruise North Endpoint and Keycloak Server"
   if [ -f "./opscruise-values.yaml" ]; then
-    ep_name=$(cat opscruise-values.yaml | grep "OPSCRUISE_ENDPOINT" | awk -F': ' '{print $2}' | sed s/[\"]//g | awk -F':' '{print $1}')
-    ep_port=$(cat opscruise-values.yaml | grep "OPSCRUISE_ENDPOINT" | awk -F': ' '{print $2}' | sed s/[\"]//g | awk -F':' '{print $2}')
+    ep_name=$(grep "OPSCRUISE_ENDPOINT" opscruise-values.yaml | awk -F': ' '{print $2}' | sed s/[\"]//g | awk -F':' '{print $1}')
+    ep_port=$(grep "OPSCRUISE_ENDPOINT" opscruise-values.yaml | awk -F': ' '{print $2}' | sed s/[\"]//g | awk -F':' '{print $2}')
     nc_call
-    ep_name=$(cat opscruise-values.yaml | grep "KEYCLOAK_URL" | awk -F': ' '{print $2}' | sed s/[\"]//g | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
-    ep_port=$(cat opscruise-values.yaml | grep "KEYCLOAK_URL" | awk -F': ' '{print $2}' | sed s/[\"]//g | awk -F'//' '{print $2}' | awk -F':' '{print $2}')
+    ep_name=$(grep "KEYCLOAK_URL" opscruise-values.yaml | awk -F': ' '{print $2}' | sed s/[\"]//g | awk -F'//' '{print $2}' | awk -F':' '{print $1}')
+    ep_port=$(grep "KEYCLOAK_URL" opscruise-values.yaml | awk -F': ' '{print $2}' | sed s/[\"]//g | awk -F'//' '{print $2}' | awk -F':' '{print $2}')
     nc_call
   else
-    echo "File \"opscruise-values.yaml\" does not exist under the path \"$(pwd)\""
-    echo -n "Do you wish to provide values now? (y/n): "
-    read response
-    if [[ "$response" == "y" || "$response" == "yes" ]]; then
-      echo -n "Enter North Endpoint Name: "
-      read ep_name
-      echo -n "Enter North Endpoint Port: "
-      read ep_port
-      nc_call
-    elif [[ "$response" == "n" || "$response" == "no" ]]; then
-      echo "Skipping check..."
-    else
-      echo "Invalid Response \"${response}\". Skipping check..."
-    fi
+    echo "File \"opscruise-values.yaml\" does not exist under the path \"$(pwd)\". Aborting execution..."
+    exit 1
   fi
   echo
   echo -e "\t--> Checking connectivity to Kernel Headers Location"
-  for i in ${lnx_distro[@]}; do
+  for i in "${lnx_distro[@]}"; do
     if [ "$i" == "ubuntu" ]; then
-      for j in ${ubuntu_kernel_loc[@]}; do
-        ep_name=$(echo $j | awk -F':' '{print $1}')
-        ep_port=$(echo $j | awk -F':' '{print $2}')
+      for j in "${ubuntu_kernel_loc[@]}"; do
+        ep_name=$(echo "$j" | awk -F':' '{print $1}')
+        ep_port=$(echo "$j" | awk -F':' '{print $2}')
         nc_call
       done
     elif [ "$i" == "amzn" ]; then
-      for j in ${amzn_kernel_loc[@]}; do
-        ep_name=$(echo $j | awk -F':' '{print $1}')
-        ep_port=$(echo $j | awk -F':' '{print $2}')
+      for j in "${amzn_kernel_loc[@]}"; do
+        ep_name=$(echo "$j" | awk -F':' '{print $1}')
+        ep_port=$(echo "$j" | awk -F':' '{print $2}')
         nc_call
       done
     elif [ "$i" == "centos" ]; then
-      for j in ${centos_kernel_loc[@]}; do
-        ep_name=$(echo $j | awk -F':' '{print $1}')
-        ep_port=$(echo $j | awk -F':' '{print $2}')
+      for j in "${centos_kernel_loc[@]}"; do
+        ep_name=$(echo "$j" | awk -F':' '{print $1}')
+        ep_port=$(echo "$j" | awk -F':' '{print $2}')
         nc_call
       done
     fi
@@ -355,7 +336,7 @@ else
   echo -e "[ ${BRED}FAILED${NC} ] ... Unable to mount kernel header location \"/usr/src/\" from Host."
 fi
 EOF
-    kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- /bin/sh -c "`cat ./kernel_check.sh`"
+    kubectl exec -it "${oc_pod_name}" -n "${OC_NAMESPACE}" -- /bin/sh -c "$(cat ./kernel_check.sh)"
   fi
   echo
   if [ "$err_count" -gt 0 ]; then
@@ -376,14 +357,16 @@ post-check() {
   echo "--------------------------------------------------------"
   echo
   echo -e "\t--> Ensure Opscruise South Components are running fine"
-  for ns in ${OC_SOUTH_NAMESPACES[@]}; do
+  for ns in "${OC_SOUTH_NAMESPACES[@]}"; do
     echo "--> Checking status of Pods in \"${ns}\" Namespace..."
     unset out
     unset pod_len
     unset not_running
-    out=$(kubectl get pods -n ${ns} -o jsonpath='{.items[*].metadata.name}')
+    out=$(kubectl get pods -n "${ns}" -o jsonpath='{.items[*].metadata.name}')
     for pod in ${out[@]}; do
-      stat=$(kubectl get pod ${pod} -n ${ns} -o jsonpath='{.status.containerStatuses[*].started}')
+      echo "Test1"
+      stat=$(kubectl get pod "${pod}" -n "${ns}" -o jsonpath='{.status.containerStatuses[*].started}')
+      echo "Test2"
       len=$(echo "$stat" | wc -w)
       if [[ "$stat" == *"false"* ]]; then
         for (( i=0; i<${len}; i++ ));
