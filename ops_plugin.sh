@@ -2,7 +2,7 @@
 
 usage() {
 cat << EOF
-usage: helm ops_sanity_check <COMMAND> <SUB_COMMAND>
+Usage: helm ops_sanity_check <COMMAND> <SUB_COMMAND>
 Available Commands:
     pre-check                 Perform Pre-checks
     post-check                Perform Post-checks
@@ -46,32 +46,34 @@ fi
 
 # Cleanup function
 cleanup() {
-  if [ "$cln_cond" == "--disable-cleanup" ]; then
-    echo "Cleanup is disabled..."
-  else
-    echo "Cleaning up..."
-    if $(kubectl get pod ${oc_pod_name} -n ${OC_NAMESPACE} &> /dev/null); then
-      kubectl delete pod ${oc_pod_name} -n ${OC_NAMESPACE}
+  if [[ "$chk_cond" == "pre-check" || "$chk_cond" == "post-check" || "$chk_cond" == "--cleanup" ]]; then
+    if [ "$cln_cond" == "--disable-cleanup" ]; then
+      echo "Cleanup is disabled..."
+    else
+      echo "Cleaning up..."
+      if $(kubectl get pod ${oc_pod_name} -n ${OC_NAMESPACE} &> /dev/null); then
+        kubectl delete pod ${oc_pod_name} -n ${OC_NAMESPACE}
+      fi
+      if $(kubectl get secret ${OC_DOCKER_SECRET_NAME} -n ${OC_NAMESPACE} &> /dev/null); then
+        kubectl delete secret ${OC_DOCKER_SECRET_NAME} -n ${OC_NAMESPACE}
+      fi
+      if [ -f ./oc-net.yaml ]; then
+        rm -v oc-net.yaml
+      fi
+      if [ -f ./kernel_check.sh ]; then
+        rm -v kernel_check.sh
+      fi
+      ns_op=$(kubectl get all -n ${OC_NAMESPACE} 2>&1)
+      kubectl delete ns ${OC_NAMESPACE} 2> /dev/null
     fi
-    if $(kubectl get secret ${OC_DOCKER_SECRET_NAME} -n ${OC_NAMESPACE} &> /dev/null); then
-      kubectl delete secret ${OC_DOCKER_SECRET_NAME} -n ${OC_NAMESPACE}
-    fi
-    if [ -f ./oc-net.yaml ]; then
-      rm -v oc-net.yaml
-    fi
-    if [ -f ./kernel_check.sh ]; then
-      rm -v kernel_check.sh
-    fi
-    ns_op=$(kubectl get all -n ${OC_NAMESPACE} 2>&1)
-    kubectl delete ns ${OC_NAMESPACE} 2> /dev/null
   fi
 }
 
 trap 'cleanup' EXIT
 
-
+# Creating a test Pod to check connectivity from South
 sanity_check_pod() {
-  echo -e "\t--> Creating a test Pod to check connectivity"
+  echo -e "\t--> Creating a test Pod to check connectivity from South"
   count=0
   kubectl create ns ${OC_NAMESPACE} > /dev/null && \
   echo -e "[ ${BGREEN}OK${NC} ] ... Created namespace \"${OC_NAMESPACE}\"" || \
@@ -184,6 +186,7 @@ pre-requisite() {
     echo
   fi
 }
+
 
 pre-check() {
   err_count=0
@@ -364,6 +367,7 @@ EOF
     echo
   fi
 }
+
 
 post-check() {
   err_count=0
@@ -627,6 +631,13 @@ elif [ "$chk_cond" == "--help" ]; then
 elif [ "$chk_cond" == "--cleanup" ]; then
   exit 0
 else
-  usage
-  exit 1
+  if [ ! -z "$chk_cond" ]; then
+    echo "error: unknown command \"$chk_cond\""
+    echo
+    usage
+    exit 1
+  else
+    usage
+    exit 0
+  fi
 fi
