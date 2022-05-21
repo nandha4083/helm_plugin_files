@@ -364,9 +364,7 @@ post-check() {
     unset not_running
     out=$(kubectl get pods -n "${ns}" -o jsonpath='{.items[*].metadata.name}')
     for pod in ${out[@]}; do
-      echo "Test1"
       stat=$(kubectl get pod "${pod}" -n "${ns}" -o jsonpath='{.status.containerStatuses[*].started}')
-      echo "Test2"
       len=$(echo "$stat" | wc -w)
       if [[ "$stat" == *"false"* ]]; then
         for (( i=0; i<${len}; i++ ));
