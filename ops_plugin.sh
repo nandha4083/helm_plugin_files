@@ -515,6 +515,7 @@ post-check() {
           echo -e "[ ${BRED}FAILED${NC} ] ... Unable to connect to the cloud. Please check the credentials provided."
           err_count=$(( err_count + 1 ))
         fi
+        echo
       elif [[ "$i" == *"awsgw"* ]]; then
         echo "--> Checking whether \"$i\" is able to connectt to \"AWS\" cloud"
         if [ -f 'opscruise-values.yaml' ]; then
@@ -531,18 +532,29 @@ post-check() {
         else
           echo "File \"opscruise-values.yaml\" is not present in $(pwd). Skipping..."
         fi
+        echo
       elif [[ "$i" == *"gcpgw"* ]]; then
         echo "--> Checking whether \"$i\" is able to connectt to \"GCP\" cloud"
+        io=$(kubectl logs $i -n opscruise | egrep "Profile prod activated|Fetching config for" | head -n 2)
+        if [ $? -eq 0 ]; then
+          echo "$io"
+          echo -e "[ ${BGREEN}OK${NC} ] ... Authentication successful"
+        else
+          echo -e "[ ${BRED}FAILED${NC} ] ... Unable to connect to the cloud. Please check the credentials provided."
+          err_count=$(( err_count + 1 ))
+        fi
+        echo
       else
         echo -e "[ ${BRED}FAILED${NC} ] ... Invalid InfraGW \"$i\""
         err_count=$(( err_count + 1 ))
+        echo
       fi
     done
     IFS=$orig_IFS
   else
     echo "No InfraGWs deployed in \"Opscruise\" namespace. Skipping..."
+    echo
   fi
-  echo
   echo -e "\t--> Checking whether kernel headers are installed or not"
   if [ $REDHAT == "true" ]; then
     echo "OS is Red Hat. Hence, skipping this check..."
