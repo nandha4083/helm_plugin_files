@@ -405,6 +405,7 @@ post-check() {
     else
       echo "Following pod(s) are not running..."
       started=0
+      printf "%0.s-" {1..89};echo
       printf "|%-45s|%-20s|%-20s|\n" "POD_NAME" "CONTAINER_NAME" "REASON"
       echo "|---------------------------------------------|--------------------|--------------------|"
       for (( i=0; i<${pod_len}; i++ ));
@@ -414,6 +415,7 @@ post-check() {
         con_rsn=$(echo ${not_running[$i]} | awk -F',' '{print $3}')
         printf "|%-45s|%-20s|%-20s|\n" $pod_name $con_name $con_rsn
       done
+      printf "%0.s-" {1..89};echo
       echo
       for (( i=0; i<${pod_len}; i++ ));
       do
