@@ -16,7 +16,7 @@ EOF
 # Variables declaration
 chk_cond="$1"
 cln_cond="$2"
-sleep_sec=5
+sleep_sec=2
 pod_retry_count=10
 oc_pod_name="oc-net-utils-$(tr -dc a-z0-9 </dev/urandom | head -c 5)"
 OC_NAMESPACE="oc-sanity-check"
@@ -367,13 +367,13 @@ post-check() {
       stat=$(kubectl get pod "${pod}" -n "${ns}" -o jsonpath='{.status.containerStatuses[*].started}')
       len=$(echo "$stat" | wc -w)
       if [[ "$stat" == *"false"* ]]; then
-        for (( i=0; i<${len}; i++ ));
+        for (( i=0; i<len; i++ ));
         do
-          con_stat=$(kubectl get pod ${pod} -n ${ns} -o jsonpath="{.status.containerStatuses[$i].started}")
+          con_stat=$(kubectl get pod "${pod}" -n "${ns}" -o jsonpath="{.status.containerStatuses[$i].started}")
           if [ "$con_stat" == "false" ]; then
-            con_name=$(kubectl get pod ${pod} -n ${ns} -o jsonpath="{.status.containerStatuses[$i].name}")
-            con_rsn=$(kubectl get pod ${pod} -n ${ns} -o jsonpath="{.status.containerStatuses[$i].state.waiting.reason}")
-            if [ ! $con_rsn ]; then
+            con_name=$(kubectl get pod "${pod}" -n "${ns}" -o jsonpath="{.status.containerStatuses[$i].name}")
+            con_rsn=$(kubectl get pod "${pod}" -n "${ns}" -o jsonpath="{.status.containerStatuses[$i].state.waiting.reason}")
+            if [ ! "$con_rsn" ]; then
               con_rsn="Unknown"
             fi
             data="$pod,$con_name,$con_rsn"
@@ -383,8 +383,8 @@ post-check() {
       fi
     done
     pod_len=$(echo "${not_running[@]}" | wc -w)
-    if [ $pod_len -eq 0 ]; then
-      kubectl get pods -n ${ns}
+    if [ "$pod_len" -eq 0 ]; then
+      kubectl get pods -n "${ns}"
       echo -e "[ ${BGREEN}OK${NC} ] ... All pods are running"
       echo
     else
@@ -393,32 +393,32 @@ post-check() {
       printf "%0.s-" {1..89};echo
       printf "|%-45s|%-20s|%-20s|\n" "POD_NAME" "CONTAINER_NAME" "REASON"
       echo "|---------------------------------------------|--------------------|--------------------|"
-      for (( i=0; i<${pod_len}; i++ ));
+      for (( i=0; i<pod_len; i++ ));
       do
-        pod_name=$(echo ${not_running[$i]} | awk -F',' '{print $1}')
-        con_name=$(echo ${not_running[$i]} | awk -F',' '{print $2}')
-        con_rsn=$(echo ${not_running[$i]} | awk -F',' '{print $3}')
-        printf "|%-45s|%-20s|%-20s|\n" $pod_name $con_name $con_rsn
+        pod_name=$(echo "${not_running[$i]}" | awk -F',' '{print $1}')
+        con_name=$(echo "${not_running[$i]}" | awk -F',' '{print $2}')
+        con_rsn=$(echo "${not_running[$i]}" | awk -F',' '{print $3}')
+        printf "|%-45s|%-20s|%-20s|\n" "$pod_name" "$con_name" "$con_rsn"
       done
       printf "%0.s-" {1..89};echo
       echo
-      for (( i=0; i<${pod_len}; i++ ));
+      for (( i=0; i<pod_len; i++ ));
       do
         wt=0
         ss=$sleep_sec
-        pod_name=$(echo ${not_running[$i]} | awk -F',' '{print $1}')
-        con_name=$(echo ${not_running[$i]} | awk -F',' '{print $2}')
-        con_rsn=$(echo ${not_running[$i]} | awk -F',' '{print $3}')
-        cons=$(kubectl get pod ${pod_name} -n ${ns} -o jsonpath='{.spec.containers[*].name}')
+        pod_name=$(echo "${not_running[$i]}" | awk -F',' '{print $1}')
+        con_name=$(echo "${not_running[$i]}" | awk -F',' '{print $2}')
+        con_rsn=$(echo "${not_running[$i]}" | awk -F',' '{print $3}')
+        cons=$(kubectl get pod "${pod_name}" -n "${ns}" -o jsonpath='{.spec.containers[*].name}')
         clen=$(echo "$cons" | wc -w)
         echo -n "Wating for container \"${con_name}\" in pod \"${pod_name}\" to start ."
-        for (( k=0; k<=${pod_retry_count}; k++ )); do
+        for (( k=0; k<=pod_retry_count; k++ )); do
           if [ $k -lt ${pod_retry_count} ]; then
-            for (( y=0; y<${clen}; y++ ));
+            for (( y=0; y<clen; y++ ));
             do
-              ccon=$(kubectl get pod ${pod_name} -n ${ns} -o jsonpath="{.status.containerStatuses[$y].name}")
+              ccon=$(kubectl get pod "${pod_name}" -n "${ns}" -o jsonpath="{.status.containerStatuses[$y].name}")
               if [ "$ccon" == "$con_name" ]; then
-                cstat=$(kubectl get pod ${pod_name} -n ${ns} -o jsonpath="{.status.containerStatuses[$y].started}")
+                cstat=$(kubectl get pod "${pod_name}" -n "${ns}" -o jsonpath="{.status.containerStatuses[$y].started}")
                 if [ "$cstat" == "false" ]; then
                   echo -n '.'
                   sleep $ss
@@ -439,7 +439,7 @@ post-check() {
           fi
         done
       done
-      kubectl get pods -n ${ns}
+      kubectl get pods -n "${ns}"
       if [ "$pod_len" -eq "$started" ]; then
         echo -e "[ ${BGREEN}OK${NC} ] ... All pods are running"
       else
@@ -451,8 +451,7 @@ post-check() {
   done
   echo
   echo -e "\t--> Check Image version of the components"
-  op=$(kubectl get deploy,ds,statefulset -n opscruise -o custom-columns=Name:.metadata.name,Image:.spec.template.spec.containers[0].image)
-  if [ $? -eq 0 ]; then
+  if op=$(kubectl get deploy,ds,statefulset -n opscruise -o custom-columns=Name:.metadata.name,Image:.spec.template.spec.containers[0].image); then
     echo "$op"
   else
     echo -e "[ ${BRED}FAILED${NC} ] ... Unable to fetch image versions"
@@ -460,14 +459,13 @@ post-check() {
   fi
   echo
   echo -e "\t--> Ensure Kafka endpoint can be connected properly"
-  gws=$(kubectl get pods -n opscruise | egrep 'k8sgw|promgw' | awk '{print $1}')
-  if [ ! -z "$gws" ]; then
+  gws=$(kubectl get pods -n opscruise | grep -E 'k8sgw|promgw' | awk '{print $1}')
+  if [ -n "$gws" ]; then
     orig_IFS=$IFS
     IFS=$'\n'
     for g in $gws; do
       echo "--> Checking whether \"$g\" is connected to Kafka or not"
-      co=$(kubectl logs $g -n opscruise | grep -iw Connected)
-      if [ $? -eq 0 ]; then
+      if co=$(kubectl logs "$g" -n opscruise | grep -iw Connected); then
         echo "$co"
         echo -e "[ ${BGREEN}OK${NC} ] ... Connected successfully"
         echo
@@ -485,15 +483,14 @@ post-check() {
   fi
   sanity_check_pod
   echo -e "\t--> Ensure Infra Gateways are able to connect to respective Cloud using provided credentials"
-  ig=$(kubectl get pods -n opscruise | egrep "aws|azure|gcp" | awk '{print $1}')
-  if [ ! -z "$ig" ]; then
+  ig=$(kubectl get pods -n opscruise | grep -E "aws|azure|gcp" | awk '{print $1}')
+  if [ -n "$ig" ]; then
     orig_IFS=$IFS
     IFS=$'\n'
     for i in $ig; do
       if [[ "$i" == *"azuregw"* ]]; then
         echo "--> Checking whether \"$i\" is able to connectt to \"Azure\" cloud"
-        io=$(kubectl logs $i -n opscruise | grep -wi Connected | awk NR==1)
-        if [ $? -eq 0 ]; then
+        if io=$(kubectl logs "$i" -n opscruise | grep -wi Connected | awk NR==1); then
           echo "$io"
           echo -e "[ ${BGREEN}OK${NC} ] ... Authentication successful"
         else
@@ -504,11 +501,13 @@ post-check() {
       elif [[ "$i" == *"awsgw"* ]]; then
         echo "--> Checking whether \"$i\" is able to connectt to \"AWS\" cloud"
         if [ -f 'opscruise-values.yaml' ]; then
-          export AWS_REGION=$(cat opscruise-values.yaml | grep region | head -1 | awk -F': ' '{print $2}' | sed s/[\"]//g)
-          export AWS_ACCESS_KEY_ID=$(cat opscruise-values.yaml | grep aws_access_key_id | head -1 | awk -F': ' '{print $2}' | sed s/[\"]//g)
-          export AWS_SECRET_ACCESS_KEY=$(cat opscruise-values.yaml | grep aws_secret_access_key | head -1 | awk -F': ' '{print $2}' | sed s/[\"]//g)
-          iam=$(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- /bin/sh -c "export AWS_REGION=${AWS_REGION};export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID};export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY};aws sts get-caller-identity")
-          if [ $? -eq 0 ]; then
+          AWS_REGION=$(grep region opscruise-values.yaml | head -1 | awk -F': ' '{print $2}' | sed s/[\"]//g)
+          AWS_ACCESS_KEY_ID=$(grep aws_access_key_id opscruise-values.yaml | head -1 | awk -F': ' '{print $2}' | sed s/[\"]//g)
+          AWS_SECRET_ACCESS_KEY=$(grep aws_secret_access_key opscruise-values.yaml | head -1 | awk -F': ' '{print $2}' | sed s/[\"]//g)
+          export AWS_REGION
+          export AWS_ACCESS_KEY_ID
+          export AWS_SECRET_ACCESS_KEY
+          if kubectl exec -it "${oc_pod_name}" -n "${OC_NAMESPACE}" -- /bin/sh -c "export AWS_REGION=${AWS_REGION};export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID};export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY};aws sts get-caller-identity" &> /dev/null; then
             echo -e "[ ${BGREEN}OK${NC} ] ... Authentication successful"
           else
             echo -e "[ ${BRED}FAILED${NC} ] ... Unable to connect to the cloud. Please check the credentials provided."
@@ -520,8 +519,7 @@ post-check() {
         echo
       elif [[ "$i" == *"gcpgw"* ]]; then
         echo "--> Checking whether \"$i\" is able to connectt to \"GCP\" cloud"
-        io=$(kubectl logs $i -n opscruise | egrep "Profile prod activated|Fetching config for" | head -n 2)
-        if [ $? -eq 0 ]; then
+        if io=$(kubectl logs "$i" -n opscruise | grep -E "Profile prod activated|Fetching config for" | head -n 2); then
           echo "$io"
           echo -e "[ ${BGREEN}OK${NC} ] ... Authentication successful"
         else
@@ -569,23 +567,23 @@ else
 fi
 EOF
     ne=$(kubectl get pods -n opscruise | grep oc-node-exporter | awk 'NR==1 {print $1}')
-    kubectl exec -it ${ne} -n opscruise -- /bin/sh -c "`cat ./kernel_check.sh`"
+    kubectl exec -it "${ne}" -n opscruise -- /bin/sh -c "$(cat ./kernel_check.sh)"
   fi
   echo
   echo -e "\t--> Check whether Prometheus is able to scrape exporters and other components"
   prom_ip=$(kubectl get pods -n collectors -o wide | grep prometheus | awk '{print $6}')
-  prom_tgt=$(kubectl exec -it ${oc_pod_name} -n ${OC_NAMESPACE} -- /bin/sh -c "curl -s http://${prom_ip}:9090/api/v1/targets?state=active")
+  prom_tgt=$(kubectl exec -it "${oc_pod_name}" -n "${OC_NAMESPACE}" -- /bin/sh -c "curl -s http://${prom_ip}:9090/api/v1/targets?state=active")
   jq_parsed=$(echo "$prom_tgt" | jq --raw-output '.data.activeTargets[] | "\(.discoveredLabels.__meta_kubernetes_service_name // .discoveredLabels.__meta_kubernetes_pod_label_opscruiseProduct),\(.labels.instance),\(.discoveredLabels.__metrics_path__),\(.health)"' | sort)
   printf "%0.s-" {1..87};echo
   printf "|%-20s|%-40s|%-12s|%-10s|\n" "SERVICE" "PROMETHEUS_TARGET" "METRICS_PATH" "HEALTH"
   echo "|--------------------|----------------------------------------|------------|----------|"
   for jqp in $jq_parsed
   do
-    svc_name=$(echo ${jqp} | awk -F',' '{print $1}')
-    prome_tgt=$(echo ${jqp} | awk -F',' '{print $2}')
-    mpath=$(echo ${jqp} | awk -F',' '{print $3}')
-    health=$(echo ${jqp} | awk -F',' '{print $4}')
-    printf "|%-20s|%-40s|%-12s|%-10s|\n" $svc_name $prome_tgt $mpath $health
+    svc_name=$(echo "${jqp}" | awk -F',' '{print $1}')
+    prome_tgt=$(echo "${jqp}" | awk -F',' '{print $2}')
+    mpath=$(echo "${jqp}" | awk -F',' '{print $3}')
+    health=$(echo "${jqp}" | awk -F',' '{print $4}')
+    printf "|%-20s|%-40s|%-12s|%-10s|\n" "$svc_name" "$prome_tgt" "$mpath" "$health"
   done
   printf "%0.s-" {1..87};echo
   echo
@@ -612,7 +610,7 @@ elif [ "$chk_cond" == "--help" ]; then
 elif [ "$chk_cond" == "--cleanup" ]; then
   exit 0
 else
-  if [ ! -z "$chk_cond" ]; then
+  if [ -n "$chk_cond" ]; then
     echo "error: unknown command \"$chk_cond\""
     echo
     usage
