@@ -1,7 +1,0 @@
-name: "ops_sanity_check"
-version: "1.0.0"
-usage: "helm ops_sanity_check pre-check/post-check"
-description: Perform sanity check on opscruise components
-ignoreFlags: false
-useTunnel: false
-command: "bash $HELM_PLUGIN_DIR/ops_plugin.sh"
