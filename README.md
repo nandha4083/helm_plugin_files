@@ -1,38 +1,32 @@
-# helm ops_sanity_check
+# South Pre and Post Check
 
-A helm3 plugin for performing sanity checks. Helm ops_sanity_check can be used to perform Pre and Post checks for deploying Opscruise product.
+This bash script can be used to perform Pre and Post deployment checks in South.
 
-## Install Plugin
-
-```sh
-> helm plugin install [VCS_URL]
-```
-
-## Uninstall Plugin
+## Download script
 
 ```sh
-> helm plugin uninstall ops_sanity_check
-```
-
-## Update Plugin
-```sh
-> helm plugin update ops_sanity_check
+> wget https://opscruise-helm.bitbucket.io/ops_plugin.sh -O ops_plugin.sh
 ```
 
 ## Usage
 
-* `helm ops_sanity_check pre-check`: Perform Pre-checks before deploying `Opscruise` components
-* `helm ops_sanity_check post-check`: Perform Post-checks after deploying `Opscruise` components
-* `helm ops_sanity_check --cleanup`: Cleanup the environment
-* `helm ops_sanity_check --help`: print help
-
-
-## Example
-
 ```sh
-> helm ops_sanity_check pre-check
-> helm ops_sanity_check post-check
+> bash ops_plugin.sh --help
+Usage: helm ops_sanity_check <COMMAND> <SUB_COMMAND>
+Available Commands:
+    pre-check                 Perform Pre-checks
+    post-check                Perform Post-checks
+    --help                    Display this text
+    --cleanup                 To explicitly run the cleanup. Default action
+Available Sub-Commands:
+    --disable-cleanup         To disable cleanup
 ```
+
+## Examples
+
+* `bash ops_plugin.sh pre-check`: Perform Pre-checks before deploying `Opscruise` components
+* `bash ops_plugin.sh post-check`: Perform Post-checks after deploying `Opscruise` components
+* `bash ops_plugin.sh --cleanup`: Cleanup the environment
 
 
 ## Requirements to run the plugin
