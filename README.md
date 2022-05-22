@@ -1,4 +1,4 @@
-# South Pre and Post Check
+# [South] Pre and Post deployment checks
 
 This bash script can be used to perform Pre and Post deployment checks in South.
 
