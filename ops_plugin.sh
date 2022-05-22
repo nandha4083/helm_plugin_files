@@ -16,7 +16,7 @@ EOF
 # Variables declaration
 chk_cond="$1"
 cln_cond="$2"
-sleep_sec=2
+sleep_sec=5
 pod_retry_count=10
 oc_pod_name="oc-net-utils-$(tr -dc a-z0-9 </dev/urandom | head -c 5)"
 OC_NAMESPACE="oc-sanity-check"
@@ -377,7 +377,7 @@ post-check() {
               con_rsn="Unknown"
             fi
             data="$pod,$con_name,$con_rsn"
-            not_running+=($(echo -e "$data"))
+            not_running+=("$(echo -e "$data")")
           fi
         done
       fi
@@ -442,6 +442,7 @@ post-check() {
       kubectl get pods -n "${ns}"
       if [ "$pod_len" -eq "$started" ]; then
         echo -e "[ ${BGREEN}OK${NC} ] ... All pods are running"
+        echo
       else
         echo -e "[ ${BRED}FAILED${NC} ] ... Few pods are NOT running"
         err_count=$(( err_count + 1 ))
