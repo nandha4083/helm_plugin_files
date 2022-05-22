@@ -12,7 +12,7 @@ This bash script can be used to perform Pre and Post deployment checks in South.
 
 ```sh
 > bash ops_plugin.sh --help
-Usage: helm ops_sanity_check <COMMAND> <SUB_COMMAND>
+Usage: bash ops_sanity_check <COMMAND> <SUB_COMMAND>
 Available Commands:
     pre-check                 Perform Pre-checks
     post-check                Perform Post-checks

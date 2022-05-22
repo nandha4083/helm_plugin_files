@@ -2,7 +2,7 @@
 
 usage() {
 cat << EOF
-Usage: helm ops_sanity_check <COMMAND> <SUB_COMMAND>
+Usage: bash ops_sanity_check <COMMAND> <SUB_COMMAND>
 Available Commands:
     pre-check                 Perform Pre-checks
     post-check                Perform Post-checks
